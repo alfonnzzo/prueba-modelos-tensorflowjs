@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detector de Toxicidad - AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/toxicity@1.2.2"></script>
+  </head>
+  <body
+    class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4 font-sans"
+  >
+    <div
+      class="w-full max-w-2xl bg-white border border-gray-200 rounded-3xl p-8 shadow-2xl"
+    >
+      <h1
+        class="text-3xl font-extrabold text-indigo-700 mb-6 text-center tracking-tight"
+      >
+        Detector de Toxicidad
+      </h1>
+
+      <div class="mb-5">
+        <textarea
+          id="userInput"
+          rows="3"
+          placeholder="Escribí algo para analizar..."
+          class="w-full p-4 bg-gray-50 border border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all text-gray-700 placeholder-gray-400 resize-none"
+        ></textarea>
+      </div>
+
+      <button
+        id="btnAnalyze"
+        disabled
+        class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg mb-8"
+      >
+        Cargando modelo...
+      </button>
+
+      <div id="loader" class="hidden text-center py-6">
+        <div
+          class="animate-spin inline-block w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mb-3"
+        ></div>
+        <p class="text-gray-500 font-medium animate-pulse">Analizando el texto con IA...</p>
+      </div>
+
+      <div id="resultsTable" class="hidden">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 border-b border-gray-200 pb-3">
+          Resultados del análisis
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="gridResults"></div>
+      </div>
+    </div>
+
+    <script>
+      const threshold = 0.7; 
+      let model;
+      const btn = document.getElementById("btnAnalyze");
+      const input = document.getElementById("userInput");
+      const grid = document.getElementById("gridResults");
+      const resultsTable = document.getElementById("resultsTable");
+      const loader = document.getElementById("loader");
+
+      toxicity.load(threshold).then((m) => {
+        model = m;
+        btn.innerText = "Analizar Toxicidad";
+        btn.disabled = false;
+      });
+
+      btn.onclick = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+
+        btn.disabled = true;
+        loader.classList.remove("hidden");
+        resultsTable.classList.add("hidden");
+        grid.innerHTML = "";
+
+        const predictions = await model.classify([text]);
+
+        loader.classList.add("hidden");
+        resultsTable.classList.remove("hidden");
+        btn.disabled = false;
+
+        predictions.forEach((p) => {
+          const isToxic = p.results[0].match;
+          const labelColor = isToxic
+            ? "text-red-600 bg-red-50"
+            : "text-emerald-600 bg-emerald-50";
+          const emoji = isToxic ? "🚩" : "✅";
+          const statusText = isToxic ? "Tóxico" : "Limpio";
+
+          grid.innerHTML += `
+            <div class="p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+              <span class="capitalize text-sm font-semibold text-gray-600">${p.label.replace("_", " ")}</span>
+              <span class="${labelColor} px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                ${emoji} ${statusText}
+              </span>
+            </div>
+          `;
+        });
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detector de Camiones - ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@1.0.0"></script>
+  </head>
+  <body
+    class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6"
+  >
+    <div
+      class="max-w-md w-full bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700"
+    >
+      <h1 class="text-2xl font-bold mb-4 text-center text-blue-400">
+        ¿Es un camión?
+      </h1>
+
+      <input
+        type="file"
+        id="imageUpload"
+        accept="image/*"
+        class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer mb-6"
+      />
+
+      <div class="relative flex justify-center mb-6">
+        <img
+          id="myImage"
+          class="rounded-lg shadow-lg hidden max-h-64 object-contain border-2 border-dashed border-gray-600"
+        />
+        <p id="status" class="text-yellow-500 font-mono text-sm">
+          Cargando modelo...
+        </p>
+      </div>
+
+      <div id="results" class="space-y-2"></div>
+    </div>
+
+    <script>
+      let model;
+      const status = document.getElementById("status");
+      const img = document.getElementById("myImage");
+      const resultsDiv = document.getElementById("results");
+
+      mobilenet.load().then((m) => {
+        model = m;
+        status.innerText = "Modelo listo. Subí una imagen.";
+      });
+
+      document.getElementById("imageUpload").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (f) => {
+          img.src = f.target.result;
+          img.classList.remove("hidden");
+          status.innerText = "Analizando...";
+
+          img.onload = () => classifyImage();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      async function classifyImage() {
+        const predictions = await model.classify(img);
+        resultsDiv.innerHTML = ""; // Limpiar resultados anteriores
+        status.innerText = "Resultados:";
+
+        let isTruck = false;
+        predictions.forEach((p) => {
+          if (p.className.toLowerCase().includes("truck")) isTruck = true;
+
+          const barWidth = Math.round(p.probability * 100);
+          resultsDiv.innerHTML += `
+                    <div class="text-xs mb-1">
+                        <div class="flex justify-between mb-1">
+                            <span>${p.className}</span>
+                            <span>${barWidth}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-1.5">
+                            <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${barWidth}%"></div>
+                        </div>
+                    </div>`;
+        });
+
+        if (isTruck) {
+          status.innerHTML =
+            '<span class="text-green-400 font-bold">🚚 ¡CAMIÓN DETECTADO!</span>';
+        }
+      }
+    </script>
+  </body>
+</html>
